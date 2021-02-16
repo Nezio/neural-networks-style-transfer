@@ -110,7 +110,7 @@ def get_loss(content_image, style_image, generated_image, model):
 
     # calculate final loss
 
-    return 12
+    return loss
 
 def get_content_loss(content_image_activations, generated_image_activations):
     # TODO: added *0.5; check if it produces worse output image
