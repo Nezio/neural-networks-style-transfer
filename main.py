@@ -103,7 +103,7 @@ def get_loss(content_image, style_image, generated_image, model):
     for style_layer_name in config.style_layer_names:
         style_layer_activations = all_activations[style_layer_name]
         style_image_activations = style_layer_activations[1,:,:,:]
-        generated_image_activations = all_activations[2,:,:,:]
+        generated_image_activations = style_layer_activations[2,:,:,:]
         style_loss += style_weight * get_style_loss(content_image_activations, generated_image_activations, image_width, image_height)
 
     # calculate total variation loss
