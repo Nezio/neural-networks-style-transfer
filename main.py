@@ -92,7 +92,7 @@ def get_loss(content_image, style_image, generated_image, model):
     # calculate content loss
     content_layer_activations = all_activations[config.content_layer_name]
     content_image_activations = content_layer_activations[0,:,:,:]
-    generated_image_activations = all_activations[2,:,:,:]
+    generated_image_activations = content_layer_activations[2,:,:,:]
     content_loss = config.content_weight * get_content_loss(content_image_activations, generated_image_activations)
 
     # calculate style loss
