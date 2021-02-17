@@ -56,10 +56,12 @@ def main():
         optimizer.apply_gradients([(gradients, generated_image)])
 
         # log and output
-        if i % 10 == 0:
+        if i % 100 == 0:
             print_log("Iteration {i}: loss={loss}".format(i=i,loss=str(round(loss.numpy(), 4))))
             image_path = "output/output_" + str(i) + ".png"
             output_image = save_image(generated_image, image_path, image_width, image_height)
+        else:
+            print("*", end="")
 
     # final results
     x = 42
@@ -72,7 +74,7 @@ def print_log(text):
     print(" " + text)
 
 def load_image(image_path, image_width, image_height):
-    image = keras.preprocessing.image.load_img(image_path, target_size=(image_width, image_height))
+    image = keras.preprocessing.image.load_img(image_path, target_size=(image_height, image_width))
     image = keras.preprocessing.image.img_to_array(image)
     image = np.expand_dims(image, axis=0)
     image = vgg19.preprocess_input(image)
