@@ -53,7 +53,13 @@ def main():
         loss, gradients = get_loss_and_gradients(content_image, style_image, generated_image, model)
 
         # optimize
+        optimizer.apply_gradients([(gradients, generated_image)])
+
         # log and output
+        if i % 10 == 0:
+            print_log("Iteration {i}: loss={loss}".format(i=i,loss=str(round(loss.numpy(), 4))))
+            image_path = "output/output_" + str(i) + ".png"
+            output_image = save_image(generated_image, image_path, image_width, image_height)
 
     # final results
     x = 42
@@ -74,7 +80,24 @@ def load_image(image_path, image_width, image_height):
 
     return image
 
-#@tf.function # Compiles a function into a callable TensorFlow graph.
+def save_image(image, path, image_width, image_height):
+    image = image.numpy()
+    image = image.reshape((image_height, image_width, 3))
+
+    # remove zero-center by mean pixel
+    image[:, :, 0] += 103.939
+    image[:, :, 1] += 116.779
+    image[:,:, 2] += 123.68
+    
+    # BGR to RGB
+    image = image[:, :, ::-1]
+    image = np.clip(image, 0, 255).astype("uint8")
+
+    # save the image
+    keras.preprocessing.image.save_img(path, image)
+    
+
+@tf.function # Compiles a function into a callable TensorFlow graph.
 def get_loss_and_gradients(content_image, style_image, generated_image, model):
     with tf.GradientTape() as gt:
         loss = get_loss(content_image, style_image, generated_image, model)
@@ -104,11 +127,13 @@ def get_loss(content_image, style_image, generated_image, model):
         style_layer_activations = all_activations[style_layer_name]
         style_image_activations = style_layer_activations[1,:,:,:]
         generated_image_activations = style_layer_activations[2,:,:,:]
-        style_loss += style_weight * get_style_loss(content_image_activations, generated_image_activations, image_width, image_height)
+        style_loss += style_weight * get_style_loss(style_image_activations, generated_image_activations, image_width, image_height)
 
     # calculate total variation loss
+    #total_variation_loss = config.total_variation_weight * get_total_variation_loss(generated_image, image_width, image_height)
 
     # calculate final loss
+    loss = content_loss + style_loss #+ total_variation_loss
 
     return loss
 
@@ -118,9 +143,38 @@ def get_content_loss(content_image_activations, generated_image_activations):
 
     return loss
 
-def get_style_loss(content_image_activations, generated_image_activations, image_width, image_height):
+def get_style_loss(style_image_activations, generated_image_activations, image_width, image_height):
+    # calculate gram matrices
+    gram_matrix_style = get_gram_matrix(style_image_activations)
+    gram_matrix_generated = get_gram_matrix(generated_image_activations)
+
+    # calculate style
+    channels = 3
+    image_size = image_width * image_height
+
+    style_loss = tf.reduce_sum(tf.square(gram_matrix_style - gram_matrix_generated)) / (4.0 * (channels ** 2) * (image_size ** 2))
+
+    return style_loss
+
+
+def get_gram_matrix(activations):
+    # transpose activations (e.g.: shape [512, 256, 64] to shape [64, 512, 256])
+    transposed_activations = tf.transpose(activations, (2, 0, 1))
+
+    # vectorize transposed activations (e.g.:  shape [64, 512, 256] to shape [64, 512*256] = [64, 131072])
+    vectorized_activations = tf.reshape(transposed_activations, (tf.shape(transposed_activations)[0], -1))
+
+    # calculate gram matrix    
+    gram_matrix = tf.matmul(vectorized_activations, tf.transpose(vectorized_activations))
     
-    x = 12
+    return gram_matrix
+
+def get_total_variation_loss(image, image_width, image_height):
+    a = tf.square(image[:, : image_height - 1, : image_width - 1, :] - image[:, 1:, : image_width - 1, :])
+    b = tf.square(image[:,:image_height - 1,:image_width - 1,:] - image[:,:image_height - 1, 1:,:])
+    total_variation_loss = tf.reduce_sum(tf.pow(a + b, 1.25))
+
+    return total_variation_loss
 
 
 if __name__ == "__main__":

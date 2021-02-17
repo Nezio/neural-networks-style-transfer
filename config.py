@@ -1,6 +1,6 @@
 
 # content image path
-content_image_path = "images/wave.png"
+content_image_path = "images/horse.png"
 
 # style image path
 style_image_path = "images/wave.png"
