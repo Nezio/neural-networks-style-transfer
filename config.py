@@ -1,9 +1,9 @@
 
 # content image path
-content_image_path = "images/horse.png"
+content_image_path = "images/content.png"
 
 # style image path
-style_image_path = "images/wave.png"
+style_image_path = "images/style.png"
 
 # generated image path
 generated_image_path = content_image_path

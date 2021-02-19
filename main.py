@@ -1,3 +1,4 @@
+import time
 import datetime
 
 import tensorflow as tf
@@ -47,7 +48,11 @@ def main():
 
     # TODO: try getting activations for content and style image before the loop
 
-    # training loop
+    # measure time
+    start_time = time.time()
+
+    # style transfer loop
+    print_log("Starting style transfer with {i} iterations.".format(i=config.iterations))
     for i in range(1, config.iterations + 1):
         # get loss and gradients
         loss, gradients = get_loss_and_gradients(content_image, style_image, generated_image, model)
@@ -63,8 +68,17 @@ def main():
         else:
             print("*", end="")
 
-    # final results
-    x = 42
+    # measure time
+    end_time = time.time()
+    total_time = int(end_time - start_time)
+    total_time_str = str(datetime.timedelta(seconds=total_time))
+    average_time_per_iteration = total_time / config.iterations
+    average_time_per_100_iterations = average_time_per_iteration * 100
+    
+    print_log("Style transfer loop complete after {time} seconds.".format(time=total_time_str))
+    print_log("Number of iterations done: {i}.".format(i=config.iterations))
+    print_log("Average time per iteration: {t}s ({t100}s per 100 iterations)".format(t=average_time_per_iteration,t100=average_time_per_100_iterations))
+    
 
 ##############################################################################################################################################
 ##############################################################################################################################################
@@ -123,19 +137,20 @@ def get_loss(content_image, style_image, generated_image, model):
     # calculate style loss
     style_loss = tf.zeros(shape=())
     style_weight = config.style_weight / len(config.style_layer_names)
-    image_width = content_image.shape[1]
-    image_height = content_image.shape[2]
+    image_width = content_image.shape[2]
+    image_height = content_image.shape[1]
+    image_size = image_width * image_height
     for style_layer_name in config.style_layer_names:
         style_layer_activations = all_activations[style_layer_name]
         style_image_activations = style_layer_activations[1,:,:,:]
         generated_image_activations = style_layer_activations[2,:,:,:]
-        style_loss += style_weight * get_style_loss(style_image_activations, generated_image_activations, image_width, image_height)
+        style_loss += style_weight * get_style_loss(style_image_activations, generated_image_activations, image_size)
 
     # calculate total variation loss
-    #total_variation_loss = config.total_variation_weight * get_total_variation_loss(generated_image, image_width, image_height)
+    total_variation_loss = config.total_variation_weight * get_total_variation_loss(generated_image, image_width, image_height)
 
     # calculate final loss
-    loss = content_loss + style_loss #+ total_variation_loss
+    loss = content_loss + style_loss + total_variation_loss
 
     return loss
 
@@ -145,14 +160,13 @@ def get_content_loss(content_image_activations, generated_image_activations):
 
     return loss
 
-def get_style_loss(style_image_activations, generated_image_activations, image_width, image_height):
+def get_style_loss(style_image_activations, generated_image_activations, image_size):
     # calculate gram matrices
     gram_matrix_style = get_gram_matrix(style_image_activations)
     gram_matrix_generated = get_gram_matrix(generated_image_activations)
 
     # calculate style
     channels = 3
-    image_size = image_width * image_height
 
     style_loss = tf.reduce_sum(tf.square(gram_matrix_style - gram_matrix_generated)) / (4.0 * (channels ** 2) * (image_size ** 2))
 
@@ -177,6 +191,10 @@ def get_total_variation_loss(image, image_width, image_height):
     total_variation_loss = tf.reduce_sum(tf.pow(a + b, 1.25))
 
     return total_variation_loss
+
+
+
+
 
 
 if __name__ == "__main__":
