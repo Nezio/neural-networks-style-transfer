@@ -70,7 +70,7 @@ def main():
             image_path = "output/output_" + str(i) + ".png"
             output_image = save_image(generated_image, image_path, image_width, image_height)
         else:
-            print("*", end="")
+            print_log("*", end="", include_timestamp=False)
 
         # calculate estimate (once)
         if i == 1:
@@ -82,11 +82,11 @@ def main():
             time_per_iteration = estimate_time_i_iterations / config.estimate_iterations
             total_estimated_time_remaining = time_per_iteration * config.iterations
             total_estimated_time_remaining_str = str(datetime.timedelta(seconds=round(total_estimated_time_remaining, 4)))
-            print("\n")
+            print_log("", include_timestamp=False)
             print_log("Time per iteration: {time}s".format(time=round(time_per_iteration, 4)))
             print_log("Estimated time remaining: {time}".format(time=total_estimated_time_remaining_str))
             for j in range(config.estimate_iterations + 1):
-                print("*", end="")
+                print_log("*", end="", include_timestamp=False)
             estimate_calculated = True
 
     # measure time
@@ -104,9 +104,10 @@ def main():
 ##############################################################################################################################################
 ##############################################################################################################################################
         
-def print_log(text):
-    print("[" + datetime.datetime.now().strftime("%Y.%m.%d. %H:%M:%S") + "]", end="")
-    print(" " + text)
+def print_log(text, end="\n", include_timestamp=True):
+    if(include_timestamp):
+        print("[" + datetime.datetime.now().strftime("%Y.%m.%d. %H:%M:%S") + "]", end=" ")
+    print(text, end=end)
 
 def load_image(image_path, image_width, image_height):
     image = keras.preprocessing.image.load_img(image_path, target_size=(image_height, image_width))
