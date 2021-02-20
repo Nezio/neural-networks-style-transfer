@@ -55,11 +55,15 @@ def main():
     # initialize estimate time
     estimate_start_time = None
 
+     # get all activations for content and style image
+    input_tensor = tf.concat([content_image, style_image], axis=0)
+    all_activations_content_style = model(input_tensor)
+
     # style transfer loop
     print_log("Starting style transfer with {i} iterations.".format(i=config.iterations))
     for i in range(1, config.iterations + 1):
         # get loss and gradients
-        loss, gradients = get_loss_and_gradients(content_image, style_image, generated_image, model)
+        loss, gradients = get_loss_and_gradients(generated_image, all_activations_content_style, model)
 
         # optimize
         optimizer.apply_gradients([(gradients, generated_image)])
@@ -135,37 +139,35 @@ def save_image(image, path, image_width, image_height):
     keras.preprocessing.image.save_img(path, image)
     
 
-@tf.function # Compiles a function into a callable TensorFlow graph.
-def get_loss_and_gradients(content_image, style_image, generated_image, model):
+@tf.function # compiles a function into a callable TensorFlow graph
+def get_loss_and_gradients(generated_image, all_activations_content_style, model):
     with tf.GradientTape() as gt:
-        loss = get_loss(content_image, style_image, generated_image, model)
+        loss = get_loss(generated_image, all_activations_content_style, model)
 
     gradients = gt.gradient(loss, generated_image)
 
     return loss, gradients
 
-def get_loss(content_image, style_image, generated_image, model):
+def get_loss(generated_image, all_activations_content_style, model):
     
     # get all activations
-    input_tensor = tf.concat([content_image, style_image, generated_image], axis=0)
-    all_activations = model(input_tensor)
+    input_tensor = tf.concat([generated_image], axis=0)
+    all_activations_generated = model(input_tensor)
 
     # calculate content loss
-    content_layer_activations = all_activations[config.content_layer_name]
-    content_image_activations = content_layer_activations[0,:,:,:]
-    generated_image_activations = content_layer_activations[2,:,:,:]
+    content_image_activations = all_activations_content_style[config.content_layer_name][0,:,:,:]
+    generated_image_activations = all_activations_generated[config.content_layer_name][0,:,:,:]
     content_loss = config.content_weight * get_content_loss(content_image_activations, generated_image_activations)
 
     # calculate style loss
     style_loss = tf.zeros(shape=())
     style_weight = config.style_weight / len(config.style_layer_names)
-    image_width = content_image.shape[2]
-    image_height = content_image.shape[1]
+    image_width = generated_image.shape[2]
+    image_height = generated_image.shape[1]
     image_size = image_width * image_height
     for style_layer_name in config.style_layer_names:
-        style_layer_activations = all_activations[style_layer_name]
-        style_image_activations = style_layer_activations[1,:,:,:]
-        generated_image_activations = style_layer_activations[2,:,:,:]
+        style_image_activations = all_activations_content_style[style_layer_name][1,:,:,:]
+        generated_image_activations = all_activations_generated[style_layer_name][0,:,:,:]
         style_loss += style_weight * get_style_loss(style_image_activations, generated_image_activations, image_size)
 
     # calculate total variation loss
