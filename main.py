@@ -50,6 +50,10 @@ def main():
 
     # measure time
     start_time = time.time()
+    initialization_time = None
+
+    # initialize estimate time
+    estimate_start_time = None
 
     # style transfer loop
     print_log("Starting style transfer with {i} iterations.".format(i=config.iterations))
@@ -61,23 +65,40 @@ def main():
         optimizer.apply_gradients([(gradients, generated_image)])
 
         # log and output
-        if i % 100 == 0:
-            print_log("Iteration {i}: loss={loss}".format(i=i,loss=str(round(loss.numpy(), 4))))
+        if i % config.WIP_save_step == 0:
+            print_log("Iteration {i}/{iterations}: loss={loss}".format(i=i, iterations=config.iterations, loss=str(round(loss.numpy(), 4))))
             image_path = "output/output_" + str(i) + ".png"
             output_image = save_image(generated_image, image_path, image_width, image_height)
         else:
             print("*", end="")
 
+        # calculate estimate (once)
+        if i == 1:
+            estimate_start_time = time.time()
+            initialization_time = estimate_start_time - start_time
+        if i == config.estimate_iterations + 1:
+            estimate_end_time = time.time()
+            estimate_time_i_iterations = int(estimate_end_time - estimate_start_time)
+            time_per_iteration = estimate_time_i_iterations / config.estimate_iterations
+            total_estimated_time_remaining = time_per_iteration * config.iterations
+            total_estimated_time_remaining_str = str(datetime.timedelta(seconds=round(total_estimated_time_remaining, 4)))
+            print("\n")
+            print_log("Time per iteration: {time}s".format(time=round(time_per_iteration, 4)))
+            print_log("Estimated time remaining: {time}".format(time=total_estimated_time_remaining_str))
+            for j in range(config.estimate_iterations + 1):
+                print("*", end="")
+            estimate_calculated = True
+
     # measure time
     end_time = time.time()
     total_time = int(end_time - start_time)
     total_time_str = str(datetime.timedelta(seconds=total_time))
-    average_time_per_iteration = total_time / config.iterations
-    average_time_per_100_iterations = average_time_per_iteration * 100
+    average_time_per_iteration = (total_time - initialization_time) / config.iterations
+    initialization_time_str = str(datetime.timedelta(seconds=round(initialization_time, 4)))
     
-    print_log("Style transfer loop complete after {time} seconds.".format(time=total_time_str))
-    print_log("Number of iterations done: {i}.".format(i=config.iterations))
-    print_log("Average time per iteration: {t}s ({t100}s per 100 iterations)".format(t=average_time_per_iteration,t100=average_time_per_100_iterations))
+    print_log("Style transfer loop complete after {time}".format(time=total_time_str))
+    print_log("Number of iterations done: {i}".format(i=config.iterations))
+    print_log("Average time per iteration (not counting initialization time ({init_time})): {time} s".format(init_time=initialization_time_str, time=str(round(average_time_per_iteration, 4))))
     
 
 ##############################################################################################################################################
@@ -155,7 +176,6 @@ def get_loss(content_image, style_image, generated_image, model):
     return loss
 
 def get_content_loss(content_image_activations, generated_image_activations):
-    # TODO: added *0.5; check if it produces worse output image
     loss = 0.5 * tf.reduce_sum(tf.square(generated_image_activations - content_image_activations))
 
     return loss

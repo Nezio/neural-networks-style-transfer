@@ -1,9 +1,9 @@
 
 # content image path
-content_image_path = "images/content.png"
+content_image_path = "images/#content.png"
 
 # style image path
-style_image_path = "images/style.png"
+style_image_path = "images/#style.png"
 
 # generated image path
 generated_image_path = content_image_path
@@ -17,7 +17,14 @@ learning_rate = 10
 
 
 # number of iterations to run
-iterations = 1000
+iterations = 3000
+
+# after how many iterations should WIP image be saved
+WIP_save_step = 100
+
+# number of iterations to use in estimate calculation
+estimate_iterations = 30
+
 
 # name of a layer from pre-trained CNN to extract content activations from
 content_layer_name = "block5_conv2"
