@@ -83,7 +83,7 @@ def main():
             total_estimated_time_remaining = time_per_iteration * config.iterations
             total_estimated_time_remaining_str = str(datetime.timedelta(seconds=round(total_estimated_time_remaining, 4)))
             print_log("", include_timestamp=False)
-            print_log("Time per iteration: {time}s".format(time=round(time_per_iteration, 4)))
+            print_log("Estimated time per iteration: {time}s".format(time=round(time_per_iteration, 4)))
             print_log("Estimated time remaining: {time}".format(time=total_estimated_time_remaining_str))
             for j in range(config.estimate_iterations + 1):
                 print_log("*", end="", include_timestamp=False)
@@ -98,7 +98,7 @@ def main():
     
     print_log("Style transfer loop complete after {time}".format(time=total_time_str))
     print_log("Number of iterations done: {i}".format(i=config.iterations))
-    print_log("Average time per iteration (not counting initialization time ({init_time})): {time} s".format(init_time=initialization_time_str, time=str(round(average_time_per_iteration, 4))))
+    print_log("Average time per iteration (not counting initialization time of {init_time}): {time} s".format(init_time=initialization_time_str, time=str(round(average_time_per_iteration, 4))))
     
 
 ##############################################################################################################################################
