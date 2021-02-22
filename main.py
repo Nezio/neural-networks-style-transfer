@@ -1,5 +1,7 @@
+import math
 import time
 import datetime
+from PIL import Image
 
 import tensorflow as tf
 from tensorflow import keras
@@ -38,15 +40,26 @@ def main():
     
     # set generated image size
     content_image_width, content_image_height = keras.preprocessing.image.load_img(config.content_image_path).size
-    image_width = config.image_width
-    image_height = int(image_width / content_image_width * content_image_height)
+    if content_image_width >= content_image_height:
+        # landscape
+        image_width = config.image_long_side
+        image_height = int(config.image_long_side / content_image_width * content_image_height)
+    else:
+        # portrait
+        image_height = config.image_long_side
+        image_width = int(config.image_long_side / content_image_height * content_image_width)
+    
+
+    print_log("Total number of pixels: {pixels}".format(pixels=str(image_height * image_width)))
 
     # load and preprocess images
     content_image = load_image(config.content_image_path, image_width, image_height)
     style_image = load_image(config.style_image_path, image_width, image_height)
     generated_image = tf.Variable(load_image(config.generated_image_path, image_width, image_height))
 
-    # TODO: try getting activations for content and style image before the loop
+    # update image size in case it was cropped
+    image_width = generated_image.shape[2]
+    image_height = generated_image.shape[1]
 
     # measure time
     start_time = time.time()
@@ -115,6 +128,11 @@ def print_log(text, end="\n", include_timestamp=True):
 
 def load_image(image_path, image_width, image_height):
     image = keras.preprocessing.image.load_img(image_path, target_size=(image_height, image_width))
+
+    if image_width * image_height > config.max_pixel_count:
+        # crop the image
+        image = crop_image(image, 32, 19)
+
     image = keras.preprocessing.image.img_to_array(image)
     image = np.expand_dims(image, axis=0)
     image = vgg19.preprocess_input(image)
@@ -214,6 +232,42 @@ def get_total_variation_loss(image, image_width, image_height):
     total_variation_loss = tf.reduce_sum(tf.pow(a + b, 1.25))
 
     return total_variation_loss
+
+def crop_image(image, aspect_width, aspect_height):
+    #TODO: test square image
+
+    result_image = None
+    offset = None
+
+    if image.width < image.height:
+        # portrait (landscape is default)
+        aspect_width, aspect_height = aspect_height, aspect_width
+    
+    new_height = int(aspect_height / aspect_width * image.width)
+    if new_height < image.height:
+        # align width and clip top and bottom
+        offset = math.floor((image.height - new_height) / 2)
+        left = 0
+        top = 0 + offset
+        right = image.width
+        bottom = image.height - offset
+    else:
+        # align hight and clip sides
+        new_width = int(aspect_width / aspect_height * image.height)
+        if new_width <= image.width:
+            offset = math.floor((image.width - new_width) / 2)
+        else:
+            # this shouldn't even be possible
+            raise Exception("New image width is somehow bigger!")
+        left = offset
+        top = 0
+        right = image.width - offset
+        bottom = image.height
+    
+    result_image = image.crop((left, top, right, bottom))
+
+    return result_image
+    
 
 
 

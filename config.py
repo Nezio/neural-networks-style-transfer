@@ -8,8 +8,11 @@ style_image_path = "images/#style.png"
 # generated image path
 generated_image_path = content_image_path
 
-# width of the generated (output) image; the height is calculated automatically
-image_width = 512
+# long side of the generated (output) image (e.g.: if image is landscape long side is image width); the short side is calculated automatically
+image_long_side = 560
+
+# maximum number of pixels per image that the network can process (determined heuristically)
+max_pixel_count = 186000
 
 
 # learning rate
@@ -35,7 +38,7 @@ style_layer_names = [
     "block2_conv1",
     "block3_conv1",
     "block4_conv1",
-    "block5_conv1",
+    "block5_conv1"
 ]
 
 
