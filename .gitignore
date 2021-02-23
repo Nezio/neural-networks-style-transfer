@@ -1,3 +1,4 @@
-images/
+source images/
+input/
 output/
 __pycache__/

@@ -1,6 +1,8 @@
+import os
 import math
 import time
 import datetime
+import shutil
 from PIL import Image
 
 import tensorflow as tf
@@ -35,87 +37,124 @@ def main():
     # create model (based on external_model) that returns all the activations
     model = keras.Model(inputs=external_model.inputs, outputs=external_model_layers)
 
-    # set optimizer
-    optimizer = keras.optimizers.Adam(learning_rate=config.learning_rate)
-    
-    # set generated image size
-    content_image_width, content_image_height = keras.preprocessing.image.load_img(config.content_image_path).size
-    if content_image_width >= content_image_height:
-        # landscape
-        image_width = config.image_long_side
-        image_height = int(config.image_long_side / content_image_width * content_image_height)
-    else:
-        # portrait
-        image_height = config.image_long_side
-        image_width = int(config.image_long_side / content_image_height * content_image_width)
-    
+    while (True):
+        # initialize/clear image paths
+        content_image_path = None
+        style_image_path = None
+        generated_image_path = None
 
-    print_log("Total number of pixels: {pixels}".format(pixels=str(image_height * image_width)))
+        # check input folder for subfolders with images
+        input_subfolders = [f.path for f in os.scandir(config.input_folder) if f.is_dir()]
+        if len(input_subfolders) > 0 and len([f.path for f in os.scandir(input_subfolders[0])]) >= 2:
+            # get image paths from subfolder
+            subfolder0_images = [f.path for f in os.scandir(input_subfolders[0])]
+            content_image_path = [s for s in subfolder0_images if "content" in s][0]
+            style_image_path = [s for s in subfolder0_images if "style" in s][0]
 
-    # load and preprocess images
-    content_image = load_image(config.content_image_path, image_width, image_height)
-    style_image = load_image(config.style_image_path, image_width, image_height)
-    generated_image = tf.Variable(load_image(config.generated_image_path, image_width, image_height))
-
-    # update image size in case it was cropped
-    image_width = generated_image.shape[2]
-    image_height = generated_image.shape[1]
-
-    # measure time
-    start_time = time.time()
-    initialization_time = None
-
-    # initialize estimate time
-    estimate_start_time = None
-
-     # get all activations for content and style image
-    input_tensor = tf.concat([content_image, style_image], axis=0)
-    all_activations_content_style = model(input_tensor)
-
-    # style transfer loop
-    print_log("Starting style transfer with {i} iterations.".format(i=config.iterations))
-    for i in range(1, config.iterations + 1):
-        # get loss and gradients
-        loss, gradients = get_loss_and_gradients(generated_image, all_activations_content_style, model)
-
-        # optimize
-        optimizer.apply_gradients([(gradients, generated_image)])
-
-        # log and output
-        if i % config.WIP_save_step == 0:
-            print_log("Iteration {i}/{iterations}: loss={loss}".format(i=i, iterations=config.iterations, loss=str(round(loss.numpy(), 4))))
-            image_path = "output/output_" + str(i) + ".png"
-            output_image = save_image(generated_image, image_path, image_width, image_height)
+            # replace slashes
+            content_image_path = content_image_path.replace("\\", "/")
+            style_image_path = style_image_path.replace("\\", "/" )
+            
+            generated_image_path = content_image_path
         else:
-            print_log("*", end="", include_timestamp=False)
+            # nothing found yet; get some sleep
+            time.sleep(1.0)
+            continue
+        
+        # create output subfolder
+        output_subfolder = config.output_folder + input_subfolders[0].split("/")[-1]
+        shutil.rmtree(output_subfolder)
+        if not os.path.exists(output_subfolder):
+            os.mkdir(output_subfolder)
+        if not os.path.exists(os.path.join(output_subfolder, "input")):
+            os.mkdir(os.path.join(output_subfolder, "input"))
 
-        # calculate estimate (once)
-        if i == 1:
-            estimate_start_time = time.time()
-            initialization_time = estimate_start_time - start_time
-        if i == config.estimate_iterations + 1:
-            estimate_end_time = time.time()
-            estimate_time_i_iterations = int(estimate_end_time - estimate_start_time)
-            time_per_iteration = estimate_time_i_iterations / config.estimate_iterations
-            total_estimated_time_remaining = time_per_iteration * config.iterations
-            total_estimated_time_remaining_str = str(datetime.timedelta(seconds=round(total_estimated_time_remaining, 4)))
-            print_log("", include_timestamp=False)
-            print_log("Estimated time per iteration: {time}s".format(time=round(time_per_iteration, 4)))
-            print_log("Estimated time remaining: {time}".format(time=total_estimated_time_remaining_str))
-            for j in range(config.estimate_iterations + 1):
+        # set generated image size
+        content_image_width, content_image_height = keras.preprocessing.image.load_img(content_image_path).size
+        if content_image_width >= content_image_height:
+            # landscape
+            image_width = config.image_long_side
+            image_height = int(config.image_long_side / content_image_width * content_image_height)
+        else:
+            # portrait
+            image_height = config.image_long_side
+            image_width = int(config.image_long_side / content_image_height * content_image_width)
+
+        print_log("Total number of pixels: {pixels}".format(pixels=str(image_height * image_width)))
+
+        # load and preprocess images
+        content_image = load_image(content_image_path, image_width, image_height)
+        style_image = load_image(style_image_path, image_width, image_height)
+        generated_image = tf.Variable(load_image(generated_image_path, image_width, image_height))
+
+        # update image size in case it was cropped
+        image_width = generated_image.shape[2]
+        image_height = generated_image.shape[1]
+
+        # measure time
+        start_time = time.time()
+        initialization_time = None
+
+        # initialize estimate time
+        estimate_start_time = None
+
+        # get all activations for content and style image
+        input_tensor = tf.concat([content_image, style_image], axis=0)
+        all_activations_content_style = model(input_tensor)
+
+        # set optimizer
+        optimizer = keras.optimizers.Adam(learning_rate=config.learning_rate)
+
+        # style transfer loop
+        print_log("Starting style transfer with {i} iterations.".format(i=config.iterations))
+        for i in range(1, config.iterations + 1):
+            # get loss and gradients
+            loss, gradients = get_loss_and_gradients(generated_image, all_activations_content_style, model)
+
+            # optimize
+            optimizer.apply_gradients([(gradients, generated_image)])
+
+            # log and output
+            if i % config.WIP_save_step == 0:
+                print_log("Iteration {i}/{iterations}: loss={loss}".format(i=i, iterations=config.iterations, loss=str(round(loss.numpy(), 4))))
+                image_path = os.path.join(output_subfolder, "output_" + str(i) + ".png")
+                output_image = save_image(generated_image, image_path, image_width, image_height)
+            else:
                 print_log("*", end="", include_timestamp=False)
-            estimate_calculated = True
 
-    # measure time
-    end_time = time.time()
-    total_time = int(end_time - start_time)
-    total_time_str = str(datetime.timedelta(seconds=total_time))
-    average_time_per_iteration = (total_time - initialization_time) / config.iterations
-    initialization_time_str = str(datetime.timedelta(seconds=round(initialization_time, 4)))
-    
-    print_log("Style transfer loop complete after {time}".format(time=total_time_str))
-    print_log("Number of iterations done: {i}".format(i=config.iterations))
-    print_log("Average time per iteration (not counting initialization time of {init_time}): {time} s".format(init_time=initialization_time_str, time=str(round(average_time_per_iteration, 4))))
+            # calculate estimate (once)
+            if i == 1:
+                estimate_start_time = time.time()
+                initialization_time = estimate_start_time - start_time
+            if i == config.estimate_iterations + 1:
+                estimate_end_time = time.time()
+                estimate_time_i_iterations = int(estimate_end_time - estimate_start_time)
+                time_per_iteration = estimate_time_i_iterations / config.estimate_iterations
+                total_estimated_time_remaining = time_per_iteration * config.iterations
+                total_estimated_time_remaining_str = str(datetime.timedelta(seconds=round(total_estimated_time_remaining, 4)))
+                print_log("", include_timestamp=False)
+                print_log("Estimated time per iteration: {time}s".format(time=round(time_per_iteration, 4)))
+                print_log("Estimated time remaining: {time}".format(time=total_estimated_time_remaining_str))
+                for j in range(config.estimate_iterations + 1):
+                    print_log("*", end="", include_timestamp=False)
+                estimate_calculated = True
+
+        # measure time
+        end_time = time.time()
+        total_time = int(end_time - start_time)
+        total_time_str = str(datetime.timedelta(seconds=total_time))
+        average_time_per_iteration = (total_time - initialization_time) / config.iterations
+        initialization_time_str = str(datetime.timedelta(seconds=round(initialization_time, 4)))
+        
+        # move processed input subfolder to output subfolder and delete input subfolder
+        move_all_files(input_subfolders[0], os.path.join(output_subfolder, "input"))
+        os.rmdir(input_subfolders[0])
+
+        # final logs
+        print_log("Style transfer loop complete after {time}".format(time=total_time_str))
+        print_log("Number of iterations done: {i}".format(i=config.iterations))
+        print_log("Average time per iteration (not counting initialization time of {init_time}): {time} s".format(init_time=initialization_time_str, time=str(round(average_time_per_iteration, 4))))
+        print_log("\n", include_timestamp=False)
     
 
 ##############################################################################################################################################
@@ -234,8 +273,6 @@ def get_total_variation_loss(image, image_width, image_height):
     return total_variation_loss
 
 def crop_image(image, aspect_width, aspect_height):
-    #TODO: test square image
-
     result_image = None
     offset = None
 
@@ -244,6 +281,7 @@ def crop_image(image, aspect_width, aspect_height):
         aspect_width, aspect_height = aspect_height, aspect_width
     
     new_height = int(aspect_height / aspect_width * image.width)
+
     if new_height < image.height:
         # align width and clip top and bottom
         offset = math.floor((image.height - new_height) / 2)
@@ -267,6 +305,13 @@ def crop_image(image, aspect_width, aspect_height):
     result_image = image.crop((left, top, right, bottom))
 
     return result_image
+
+def move_all_files(source_folder, target_folder):
+        
+    file_names = os.listdir(source_folder)
+        
+    for file_name in file_names:
+        shutil.move(os.path.join(source_folder, file_name), target_folder)
     
 
 

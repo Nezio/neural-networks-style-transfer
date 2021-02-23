@@ -1,12 +1,9 @@
+# input folder (this folder will be checked for subfolders; each subfolder should contain a content and a style image named "content" and "style")
+input_folder = "input/"
 
-# content image path
-content_image_path = "images/#content.png"
+# output folder (inside of this folder subfolders will be created, one for each input subfolder)
+output_folder = "output/"
 
-# style image path
-style_image_path = "images/#style.png"
-
-# generated image path
-generated_image_path = content_image_path
 
 # long side of the generated (output) image (e.g.: if image is landscape long side is image width); the short side is calculated automatically
 image_long_side = 560
@@ -15,12 +12,8 @@ image_long_side = 560
 max_pixel_count = 186000
 
 
-# learning rate
-learning_rate = 10
-
-
 # number of iterations to run
-iterations = 3000
+iterations = 1000
 
 # after how many iterations should WIP image be saved
 WIP_save_step = 100
@@ -28,6 +21,9 @@ WIP_save_step = 100
 # number of iterations to use in estimate calculation
 estimate_iterations = 30
 
+
+# learning rate
+learning_rate = 10
 
 # name of a layer from pre-trained CNN to extract content activations from
 content_layer_name = "block5_conv2"
