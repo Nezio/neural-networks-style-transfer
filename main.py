@@ -63,7 +63,8 @@ def main():
         
         # create output subfolder
         output_subfolder = config.output_folder + input_subfolders[0].split("/")[-1]
-        shutil.rmtree(output_subfolder)
+        if os.path.exists(output_subfolder):
+            shutil.rmtree(output_subfolder)
         if not os.path.exists(output_subfolder):
             os.mkdir(output_subfolder)
         if not os.path.exists(os.path.join(output_subfolder, "input")):
