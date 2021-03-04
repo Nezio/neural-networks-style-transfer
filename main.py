@@ -45,12 +45,12 @@ def main():
         generated_image_path = None
 
         # check input folder for subfolders with images
-        input_subfolders = [f.path for f in os.scandir(config.input_folder) if f.is_dir()]
+        input_subfolders = [f.path.replace("\\", "/") for f in os.scandir(config.input_folder) if f.is_dir()]
         if len(input_subfolders) > 0 and len([f.path for f in os.scandir(input_subfolders[0])]) >= 2:
             # get image paths from the first subfolder (process oldest first; FIFO)
             subfolder0_images = [f.path for f in os.scandir(input_subfolders[0])]
-            content_image_path = [s for s in subfolder0_images if "content" in s][0]
-            style_image_path = [s for s in subfolder0_images if "style" in s][0]
+            content_image_path = [s for s in subfolder0_images if "content" in s.replace("\\", "/").split("/")[-1]][0]
+            style_image_path = [s for s in subfolder0_images if "style" in s.replace("\\", "/").split("/")[-1]][0]
 
             # replace slashes
             content_image_path = content_image_path.replace("\\", "/")
@@ -66,7 +66,7 @@ def main():
         job_result_folder = None
         output_input_folder = None
         input_folder_name = input_subfolders[0].split("/")[-1]
-        if re.search(".+_.+_.+", input_subfolders[0]):
+        if re.search(".+_.+_.+", input_folder_name):
             # create output subfolder structure (web app folder)
 
             output_folder_datetime = input_folder_name.split("_")[0]

@@ -1,8 +1,11 @@
 # input folder (this folder will be checked for subfolders; each subfolder should contain a content and a style image named "content" and "style")
-input_folder = "input/"
+#input_folder = "input/"
+input_folder = "D:/Development/Visual studio/Style transfer web app/neural-networks-style-transfer-web-app/StyleTransferWebApp/style_transfer_work_dir/input"
+
 
 # output folder (inside of this folder subfolders will be created, one for each input subfolder)
-output_folder = "output/"
+#output_folder = "output/"
+output_folder = "D:/Development/Visual studio/Style transfer web app/neural-networks-style-transfer-web-app/StyleTransferWebApp/style_transfer_work_dir/output"
 
 
 # long side of the generated (output) image (e.g.: if image is landscape long side is image width); the short side is calculated automatically
