@@ -4,6 +4,7 @@ import time
 import datetime
 import shutil
 from PIL import Image
+import re
 
 import tensorflow as tf
 from tensorflow import keras
@@ -46,7 +47,7 @@ def main():
         # check input folder for subfolders with images
         input_subfolders = [f.path for f in os.scandir(config.input_folder) if f.is_dir()]
         if len(input_subfolders) > 0 and len([f.path for f in os.scandir(input_subfolders[0])]) >= 2:
-            # get image paths from subfolder
+            # get image paths from the first subfolder (process oldest first; FIFO)
             subfolder0_images = [f.path for f in os.scandir(input_subfolders[0])]
             content_image_path = [s for s in subfolder0_images if "content" in s][0]
             style_image_path = [s for s in subfolder0_images if "style" in s][0]
@@ -60,15 +61,50 @@ def main():
             # nothing found yet; get some sleep
             time.sleep(1.0)
             continue
-        
-        # create output subfolder
-        output_subfolder = config.output_folder + input_subfolders[0].split("/")[-1]
-        if os.path.exists(output_subfolder):
-            shutil.rmtree(output_subfolder)
-        if not os.path.exists(output_subfolder):
-            os.mkdir(output_subfolder)
-        if not os.path.exists(os.path.join(output_subfolder, "input")):
-            os.mkdir(os.path.join(output_subfolder, "input"))
+
+        # create output subfolder structure
+        job_result_folder = None
+        output_input_folder = None
+        input_folder_name = input_subfolders[0].split("/")[-1]
+        if re.search(".+_.+_.+", input_subfolders[0]):
+            # create output subfolder structure (web app folder)
+
+            output_folder_datetime = input_folder_name.split("_")[0]
+            output_folder_userid = input_folder_name.split("_")[1]
+            output_folder_jobid = input_folder_name.split("_")[2]
+            
+            # create user folder if it doesn't already exist
+            user_folder = os.path.join(config.output_folder, output_folder_userid)
+            if not os.path.exists(user_folder):
+                os.mkdir(user_folder)
+
+            # create job folder if it doesn't already exist
+            job_result_folder = os.path.join(user_folder, output_folder_datetime + "_" + output_folder_jobid)
+            if not os.path.exists(job_result_folder):
+                os.mkdir(job_result_folder)
+            else:
+                # this shouldn't be possible during normal execution
+                raise Exception("Job folder {folder} already exists! Did you stop this script before the cleanup section the last time it ran?".format(folder=job_result_folder))
+
+            # create input folder within the output job folder
+            output_input_folder = os.path.join(job_result_folder, "input")
+            if not os.path.exists(output_input_folder):
+                os.mkdir(output_input_folder)
+        else:
+            # create output subfolder structure (regular folder)
+
+            # create job folder; remove old one if it exists
+            job_result_folder = os.path.join(config.output_folder, input_folder_name)
+            if os.path.exists(job_result_folder):
+                shutil.rmtree(job_result_folder)
+            if not os.path.exists(job_result_folder):
+                os.mkdir(job_result_folder)
+            
+            # create input folder within the output job folder
+            output_input_folder = os.path.join(job_result_folder, "input")
+            if not os.path.exists(output_input_folder):
+                os.mkdir(output_input_folder)
+
 
         # set generated image size
         content_image_width, content_image_height = keras.preprocessing.image.load_img(content_image_path).size
@@ -118,7 +154,9 @@ def main():
             # log and output
             if i % config.WIP_save_step == 0:
                 print_log("Iteration {i}/{iterations}: loss={loss}".format(i=i, iterations=config.iterations, loss=str(round(loss.numpy(), 4))))
-                image_path = os.path.join(output_subfolder, "output_" + str(i) + ".png")
+                padded_iteration_number = str(i).zfill(4)
+                image_name = "output_" + padded_iteration_number + ".png"
+                image_path = os.path.join(job_result_folder, image_name)
                 output_image = save_image(generated_image, image_path, image_width, image_height)
             else:
                 print_log("*", end="", include_timestamp=False)
@@ -148,7 +186,7 @@ def main():
         initialization_time_str = str(datetime.timedelta(seconds=round(initialization_time, 4)))
         
         # move processed input subfolder to output subfolder and delete input subfolder
-        move_all_files(input_subfolders[0], os.path.join(output_subfolder, "input"))
+        move_all_files(input_subfolders[0], output_input_folder)
         os.rmdir(input_subfolders[0])
 
         # final logs
