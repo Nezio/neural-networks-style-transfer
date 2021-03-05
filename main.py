@@ -105,6 +105,8 @@ def main():
             if not os.path.exists(output_input_folder):
                 os.mkdir(output_input_folder)
 
+        # move processed input subfolder to the output subfolder
+        copy_all_files(input_subfolders[0], output_input_folder)
 
         # set generated image size
         content_image_width, content_image_height = keras.preprocessing.image.load_img(content_image_path).size
@@ -185,9 +187,8 @@ def main():
         average_time_per_iteration = (total_time - initialization_time) / config.iterations
         initialization_time_str = str(datetime.timedelta(seconds=round(initialization_time, 4)))
         
-        # move processed input subfolder to output subfolder and delete input subfolder
-        move_all_files(input_subfolders[0], output_input_folder)
-        os.rmdir(input_subfolders[0])
+        # delete input subfolder
+        shutil.rmtree(input_subfolders[0])
 
         # final logs
         print_log("Style transfer loop complete after {time}".format(time=total_time_str))
@@ -345,12 +346,12 @@ def crop_image(image, aspect_width, aspect_height):
 
     return result_image
 
-def move_all_files(source_folder, target_folder):
+def copy_all_files(source_folder, target_folder):
         
     file_names = os.listdir(source_folder)
         
     for file_name in file_names:
-        shutil.move(os.path.join(source_folder, file_name), target_folder)
+        shutil.copy(os.path.join(source_folder, file_name), target_folder)
     
 
 
