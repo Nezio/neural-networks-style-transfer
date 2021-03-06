@@ -39,26 +39,10 @@ def main():
     model = keras.Model(inputs=external_model.inputs, outputs=external_model_layers)
 
     while (True):
-        # initialize/clear image paths
-        content_image_path = None
-        style_image_path = None
-        generated_image_path = None
-
-        # check input folder for subfolders with images
+        # check input folder for subfolders with images and check the first subfolder for images to process (first subfolder because FIFO)
         input_subfolders = [f.path.replace("\\", "/") for f in os.scandir(config.input_folder) if f.is_dir()]
-        if len(input_subfolders) > 0 and len([f.path for f in os.scandir(input_subfolders[0])]) >= 2:
-            # get image paths from the first subfolder (process oldest first; FIFO)
-            subfolder0_images = [f.path for f in os.scandir(input_subfolders[0])]
-            content_image_path = [s for s in subfolder0_images if "content" in s.replace("\\", "/").split("/")[-1]][0]
-            style_image_path = [s for s in subfolder0_images if "style" in s.replace("\\", "/").split("/")[-1]][0]
-
-            # replace slashes
-            content_image_path = content_image_path.replace("\\", "/")
-            style_image_path = style_image_path.replace("\\", "/" )
-            
-            generated_image_path = content_image_path
-        else:
-            # nothing found yet; get some sleep
+        if len(input_subfolders) == 0 or len([f.path for f in os.scandir(input_subfolders[0])]) < 2:
+            # no job folders found yet; get some sleep
             time.sleep(1.0)
             continue
 
@@ -105,9 +89,28 @@ def main():
             if not os.path.exists(output_input_folder):
                 os.mkdir(output_input_folder)
 
-        # move processed input subfolder to the output subfolder
+        # copy first input subfolder to output subfolder and delete input subfolder
         copy_all_files(input_subfolders[0], output_input_folder)
+        shutil.rmtree(input_subfolders[0])
 
+        # initialize/clear image paths
+        content_image_path = None
+        style_image_path = None
+        generated_image_path = None
+
+        # if there are images in input subfolder of output folder: initialize image paths
+        if len([f.path for f in os.scandir(output_input_folder)]) >= 2:
+            # get image paths from the selected output_input_folder
+            output_input_folder_images = [f.path for f in os.scandir(output_input_folder)]
+            content_image_path = [s for s in output_input_folder_images if "content" in s.replace("\\", "/").split("/")[-1]][0]
+            style_image_path = [s for s in output_input_folder_images if "style" in s.replace("\\", "/").split("/")[-1]][0]
+
+            # replace slashes
+            content_image_path = content_image_path.replace("\\", "/")
+            style_image_path = style_image_path.replace("\\", "/" )
+            
+            generated_image_path=content_image_path
+        
         # set generated image size
         content_image_width, content_image_height = keras.preprocessing.image.load_img(content_image_path).size
         if content_image_width >= content_image_height:
@@ -186,9 +189,6 @@ def main():
         total_time_str = str(datetime.timedelta(seconds=total_time))
         average_time_per_iteration = (total_time - initialization_time) / config.iterations
         initialization_time_str = str(datetime.timedelta(seconds=round(initialization_time, 4)))
-        
-        # delete input subfolder
-        shutil.rmtree(input_subfolders[0])
 
         # final logs
         print_log("Style transfer loop complete after {time}".format(time=total_time_str))
