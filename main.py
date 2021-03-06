@@ -91,7 +91,16 @@ def main():
 
         # copy first input subfolder to output subfolder and delete input subfolder
         copy_all_files(input_subfolders[0], output_input_folder)
-        shutil.rmtree(input_subfolders[0])
+        
+        folder_to_delete = input_subfolders[0]
+        while(os.path.exists(folder_to_delete)):
+            try:
+                shutil.rmtree(folder_to_delete)
+            except:
+                # folder must be currently in use by the web-app, wait a bit
+                time.sleep(0.5)
+                continue;
+        
 
         # initialize/clear image paths
         content_image_path = None
