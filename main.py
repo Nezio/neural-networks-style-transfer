@@ -89,9 +89,13 @@ def main():
             if not os.path.exists(output_input_folder):
                 os.mkdir(output_input_folder)
 
+        # wait a bit in case input folder or input images are still in use
+        time.sleep(2)
+
         # copy first input subfolder to output subfolder and delete input subfolder
         copy_all_files(input_subfolders[0], output_input_folder)
         
+        # handle a rare case when input folder is still in use
         folder_to_delete = input_subfolders[0]
         while(os.path.exists(folder_to_delete)):
             try:
@@ -256,7 +260,7 @@ def get_loss_and_gradients(generated_image, all_activations_content_style, model
 
 def get_loss(generated_image, all_activations_content_style, model):
     
-    # get all activations
+    # get all activations for the generated image
     input_tensor = tf.concat([generated_image], axis=0)
     all_activations_generated = model(input_tensor)
 
