@@ -172,8 +172,11 @@ def main():
             # log and output
             if i % config.WIP_save_step == 0:
                 print_log("Iteration {i}/{iterations}: loss={loss}".format(i=i, iterations=config.iterations, loss=str(round(loss.numpy(), 4))))
+                final_sufix = ""
+                if i == config.iterations:
+                    final_sufix = "_final"
                 padded_iteration_number = str(i).zfill(4)
-                image_name = "output_" + padded_iteration_number + ".png"
+                image_name = "output_" + padded_iteration_number + final_sufix + ".png"
                 image_path = os.path.join(job_result_folder, image_name)
                 output_image = save_image(generated_image, image_path, image_width, image_height)
             else:
