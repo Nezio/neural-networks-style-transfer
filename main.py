@@ -135,7 +135,8 @@ def main():
             image_height = config.image_long_side
             image_width = int(config.image_long_side / content_image_height * content_image_width)
 
-        print_log("Total number of pixels: {pixels}".format(pixels=str(image_height * image_width)))
+        # debug; number of pixels before the crop
+        #print_log("Total number of pixels: {pixels}".format(pixels=str(image_height * image_width)))
 
         # load and preprocess images
         content_image = load_image(content_image_path, image_width, image_height)
